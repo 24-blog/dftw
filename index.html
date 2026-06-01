@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>十二縁起 — 初天法輪</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --bg2: #111116;
+    --gold: #c9a84c;
+    --gold-dim: #7a6230;
+    --blue: #4a9eda;
+    --blue-dim: #2a5a80;
+    --text: #e8e0d0;
+    --text-dim: #7a7060;
+    --ku: #ffffff;
+    --border: rgba(201,168,76,0.2);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 2rem 1.5rem 2rem;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, var(--gold), transparent);
+    margin: 2rem auto 0;
+  }
+  .title-ja {
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    font-weight: 300;
+    letter-spacing: 0.5em;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(201,168,76,0.4);
+  }
+  .title-sub {
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: var(--text-dim);
+    margin-top: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+  }
+
+  /* ── PREMISE ── */
+  .premise {
+    max-width: 680px;
+    margin: 3rem auto;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    align-items: center;
+    gap: 1rem;
+  }
+  @media (max-width: 480px) {
+    .premise {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      max-width: 100%;
+    }
+    .vs { order: 2; }
+    .premise-card.mu { order: 1; }
+    .premise-card.has { order: 3; }
+  }
+  .premise-card {
+    border: 1px solid var(--border);
+    padding: 1.2rem 1.5rem;
+    background: var(--bg2);
+    position: relative;
+  }
+  .premise-card .label {
+    font-size: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    margin-bottom: 0.4rem;
+  }
+  .premise-card.has { border-color: var(--gold-dim); }
+  .premise-card.has .val { color: var(--gold); font-size: 1.1rem; }
+  .premise-card.mu { border-color: var(--blue-dim); }
+  .premise-card.mu .val { color: var(--blue); font-size: 1.1rem; }
+  .premise-card .attrs {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+    line-height: 1.8;
+  }
+  .vs {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+  }
+  @media (max-width: 480px) {
+    .section {
+      padding: 2rem 1rem;
+    }
+    .desc {
+      padding-left: 1rem;
+      margin: 0 1rem 2rem;
+    }
+  }
+  .section-label {
+    font-size: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold-dim);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── SPIRAL SVG ── */
+  #spiral-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0 2rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #spiral-svg {
+    overflow: visible;
+    max-width: 100%;
+    touch-action: pan-x pan-y;
+  }
+
+  /* ── DESCRIPTION TEXT ── */
+  .desc {
+    max-width: 620px;
+    margin: 0 auto 3rem;
+    padding: 0 2rem;
+    font-size: 0.85rem;
+    line-height: 2.2;
+    color: var(--text-dim);
+    border-left: 1px solid var(--border);
+    padding-left: 1.5rem;
+  }
+  .desc em { color: var(--gold); font-style: normal; }
+
+  /* ── FORCE GRAPH ── */
+  #graph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  #graph-svg {
+    width: 100%;
+    height: clamp(360px, 60vw, 520px);
+    display: block;
+    touch-action: none;
+  }
+  #tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(10,10,12,0.95);
+    border: 1px solid var(--gold-dim);
+    padding: 0.8rem 1rem;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    max-width: 220px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #tooltip .t-name { color: var(--gold); font-size: 0.95rem; margin-bottom: 0.3rem; }
+  #tooltip .t-role { color: var(--text-dim); }
+  #tooltip .t-nidana { color: var(--text); margin-top: 0.3rem; }
+  #tooltip .t-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    padding: 0.1rem 0.4rem;
+    margin-top: 0.4rem;
+    border: 1px solid;
+  }
+
+  /* ── SHITAI TABLE ── */
+  .shitai {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+  .shitai-cell {
+    background: var(--bg);
+    padding: 1.2rem;
+    transition: background 0.2s;
+  }
+  .shitai-cell:hover { background: var(--bg2); }
+  .shitai-cell .s-kanji {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+  .shitai-cell .s-label {
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.5rem;
+  }
+  .shitai-cell .s-desc {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .ku-color  .s-kanji { color: #e0d8c8; }
+  .shu-color .s-kanji { color: var(--blue); }
+  .metsu-color .s-kanji { color: #8bc4a0; }
+  .do-color  .s-kanji { color: var(--gold); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 4rem 2rem;
+    font-size: 0.65rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1rem 0 0.5rem;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-ja">十二縁起　初天法輪</div>
+  <div class="title-sub">Dvādaśanidāna — The First Turning of the Wheel</div>
+</header>
+
+<!-- ── 立場の二項対立 ── -->
+<div class="premise">
+  <div class="premise-card mu">
+    <div class="label">立場②　本来の在り方</div>
+    <div class="val">無</div>
+    <div class="attrs">可変<br>相対<br>関係</div>
+  </div>
+  <div class="vs">vs</div>
+  <div class="premise-card has">
+    <div class="label">立場①　錯覚としての在り方</div>
+    <div class="val">有</div>
+    <div class="attrs">不変<br>絶対<br>独立</div>
+  </div>
+</div>
+
+<div class="desc">
+  本来は<em>「無い」</em>はずのモノが、どのようなプロセスで<em>「有る」</em>モノとして意識上へ現れるかを説明したチャートが十二縁起である。無空間から「有」が生まれ、そして消滅。この生起–消滅の間断なき刹那の循環を<em>輪廻</em>という。
+</div>
+
+<!-- ── 螺旋図 ── -->
+<div class="section">
+  <div class="section-label">十二縁起　生起の螺旋</div>
+  <div id="spiral-wrap">
+    <svg id="spiral-svg" width="560" height="560" viewBox="-280 -280 560 560"></svg>
+  </div>
+</div>
+
+<!-- ── Force Graph ── -->
+<div class="section">
+  <div class="section-label">関係依存的生起　縁起ネットワーク</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#e0d8c8"></div>苦（存在論）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4a9eda"></div>集（認識論・原因論）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8bc4a0"></div>滅（涅槃）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>道（方法論）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#888"></div>無（根源）</div>
+  </div>
+  <div id="graph-wrap">
+    <svg id="graph-svg"></svg>
+    <div id="tooltip"></div>
+  </div>
+</div>
+
+<!-- ── 四諦 ── -->
+<div class="section">
+  <div class="section-label">四諦　苦集滅道</div>
+  <div class="shitai">
+    <div class="shitai-cell ku-color">
+      <div class="s-kanji">苦</div>
+      <div class="s-label">DUKKHA / 存在論</div>
+      <div class="s-desc">存在そのものの虚、不完全性。「有」は錯覚として保存された関係性の切り取りに過ぎない。</div>
+    </div>
+    <div class="shitai-cell shu-color">
+      <div class="s-kanji">集</div>
+      <div class="s-label">SAMUDAYA / 認識論・原因論</div>
+      <div class="s-desc">十二縁起。無から観察・固着・実体化へ至る生成のプロセス。苦の原因の解明。</div>
+    </div>
+    <div class="shitai-cell metsu-color">
+      <div class="s-kanji">滅</div>
+      <div class="s-label">NIRODHA / 涅槃</div>
+      <div class="s-desc">循環の止滅。輪廻からの解放。言語化の外にある境地——釈尊は悟りの内容を言葉に残さなかった。</div>
+    </div>
+    <div class="shitai-cell do-color">
+      <div class="s-kanji">道</div>
+      <div class="s-label">MĀRGA / 方法論</div>
+      <div class="s-desc">正八道・中道。螺旋を断ち切るベクトル。「有る」でも「無い」でもない中間の実践。</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  初天法輪 — 鹿野苑にて説かれた最初の教え<br>
+  本来、仏教は四諦に始まり四諦に終わる
+</footer>
+
+<script>
+// ─────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────
+const nidanas = [
+  { id: 'mu',    kanji: '無',  role: '可変・相対・関係',       nidana: '十二縁起の根源。無空間。意識の向かう先によって現象が現前する。', shitai: null,   color: '#888888' },
+  { id: 'gyo',   kanji: '行',  role: '志向作用・形成作用（業）', nidana: '意識の固着が記憶となり業となる。滅しても瞬時に再生される。',   shitai: 'shu',  color: '#4a9eda' },
+  { id: 'shiki', kanji: '識',  role: '識別作用',               nidana: '関係性を切り取り、差異を立てる認識の働き。',                  shitai: 'shu',  color: '#4a9eda' },
+  { id: 'myoshiki', kanji: '名色', role: '現象',             nidana: '識別された名称と形態。現象として現前したもの。',                shitai: 'ku',   color: '#e0d8c8' },
+  { id: 'roku',  kanji: '六処', role: '目・耳・鼻・口・身・意', nidana: '六つの感覚器官。世界との接点。',                             shitai: 'ku',   color: '#e0d8c8' },
+  { id: 'soku',  kanji: '触',  role: '感覚器官への接触',        nidana: '器官と対象と識の三者が出会う瞬間。',                          shitai: 'shu',  color: '#4a9eda' },
+  { id: 'ju',    kanji: '受',  role: '感受作用',               nidana: '接触から生じる快・苦・捨の感受。',                            shitai: 'shu',  color: '#4a9eda' },
+  { id: 'ai',    kanji: '愛',  role: '再生・持続作用',          nidana: '感受に伴う渇愛。再生を駆動する力。',                          shitai: 'shu',  color: '#4a9eda' },
+  { id: 'shu',   kanji: '取',  role: '固着作用',               nidana: '渇愛が深化し執取となる。「有る」という錯覚の固定。',           shitai: 'shu',  color: '#4a9eda' },
+  { id: 'u',     kanji: '有',  role: '不変・絶対・独立（錯覚）', nidana: '無から生成された実体の錯覚。輪廻の核。',                    shitai: 'ku',   color: '#e0d8c8' },
+  { id: 'sho',   kanji: '生',  role: '生起・実体化',           nidana: '錯覚が現象として生起する瞬間。',                              shitai: 'ku',   color: '#e0d8c8' },
+  { id: 'shi',   kanji: '死',  role: '消滅',                   nidana: '生起したものの消滅。しかし業により即座に再生される。',         shitai: 'ku',   color: '#e0d8c8' },
+  { id: 'shodo', kanji: '正八道', role: '方法論・中道',        nidana: '輪廻の循環を止滅させる実践。螺旋を断ち切るベクトル。',         shitai: 'do',   color: '#c9a84c' },
+  { id: 'nirvana', kanji: '涅槃', role: '循環の止滅',         nidana: '釈尊が悟った境地。言語化の外にある。四諦の到達点。',            shitai: 'metsu', color: '#8bc4a0' },
+];
+
+const links = [
+  { source: 'mu',    target: 'gyo' },
+  { source: 'gyo',   target: 'shiki' },
+  { source: 'shiki', target: 'myoshiki' },
+  { source: 'myoshiki', target: 'roku' },
+  { source: 'roku',  target: 'soku' },
+  { source: 'soku',  target: 'ju' },
+  { source: 'ju',    target: 'ai' },
+  { source: 'ai',    target: 'shu' },
+  { source: 'shu',   target: 'u' },
+  { source: 'u',     target: 'sho' },
+  { source: 'sho',   target: 'shi' },
+  { source: 'shi',   target: 'gyo',   type: 'rinne' },  // 輪廻
+  { source: 'shodo', target: 'nirvana', type: 'do' },
+  { source: 'shu',   target: 'shodo', type: 'do' },
+  { source: 'ai',    target: 'shodo', type: 'do' },
+];
+
+const shitaiColors = {
+  ku:    '#e0d8c8',
+  shu:   '#4a9eda',
+  metsu: '#8bc4a0',
+  do:    '#c9a84c',
+};
+const shitaiLabels = { ku:'苦', shu:'集', metsu:'滅', do:'道' };
+
+// ─────────────────────────────────────────
+// SPIRAL SVG
+// ─────────────────────────────────────────
+(function drawSpiral() {
+  const svg = d3.select('#spiral-svg');
+  const defs = svg.append('defs');
+
+  // glow filter
+  const filter = defs.append('filter').attr('id','glow');
+  filter.append('feGaussianBlur').attr('stdDeviation','3').attr('result','blur');
+  const merge = filter.append('feMerge');
+  merge.append('feMergeNode').attr('in','blur');
+  merge.append('feMergeNode').attr('in','SourceGraphic');
+
+  // radial gradient for center
+  const rg = defs.append('radialGradient').attr('id','centerGrad');
+  rg.append('stop').attr('offset','0%').attr('stop-color','#ffffff').attr('stop-opacity','0.08');
+  rg.append('stop').attr('offset','100%').attr('stop-color','#ffffff').attr('stop-opacity','0');
+
+  // center void
+  svg.append('circle').attr('r', 220).attr('fill','url(#centerGrad)');
+  svg.append('circle').attr('r', 60).attr('fill','none').attr('stroke','#333').attr('stroke-width','1');
+  svg.append('circle').attr('r', 60).attr('fill','rgba(255,255,255,0.02)');
+
+  // 無 label
+  svg.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','Noto Serif JP').attr('font-size','22').attr('fill','#aaa')
+    .attr('letter-spacing','4').text('無');
+  svg.append('text').attr('y', 20).attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','DM Mono').attr('font-size','8').attr('fill','#555')
+    .attr('letter-spacing','2').text('śūnyatā');
+
+  // spiral path
+  const spiralNodes = nidanas.slice(1, 13); // 行〜死
+  const N = spiralNodes.length;
+  const angleStep = (2 * Math.PI) / N;
+  const rStart = 90, rEnd = 240;
+
+  const points = spiralNodes.map((d, i) => {
+    const angle = -Math.PI / 2 + i * angleStep;
+    const r = rStart + (rEnd - rStart) * (i / (N - 1));
+    return { x: Math.cos(angle) * r, y: Math.sin(angle) * r, d, angle, r };
+  });
+
+  // draw spiral curve
+  const lineGen = d3.line().x(p => p.x).y(p => p.y).curve(d3.curveCatmullRom.alpha(0.5));
+  svg.append('path')
+    .datum(points)
+    .attr('d', lineGen)
+    .attr('fill','none')
+    .attr('stroke','rgba(201,168,76,0.25)')
+    .attr('stroke-width','1.5')
+    .attr('stroke-dasharray','4 3');
+
+  // 輪廻 arc back from 死 to 行
+  const last = points[N-1];
+  const first = points[0];
+  svg.append('path')
+    .attr('d', `M${last.x},${last.y} Q${-last.x * 0.3},${last.y * 0.3} ${first.x},${first.y}`)
+    .attr('fill','none')
+    .attr('stroke','rgba(74,158,218,0.3)')
+    .attr('stroke-width','1')
+    .attr('stroke-dasharray','2 4');
+
+  // 輪廻 label
+  svg.append('text')
+    .attr('x', -200).attr('y', 40)
+    .attr('font-family','Noto Serif JP').attr('font-size','9').attr('fill','rgba(74,158,218,0.6)')
+    .attr('letter-spacing','3').text('輪廻');
+
+  // nodes
+  const nodeG = svg.selectAll('.snode').data(points).enter().append('g')
+    .attr('class','snode')
+    .attr('transform', p => `translate(${p.x},${p.y})`);
+
+  nodeG.append('circle')
+    .attr('r', 18)
+    .attr('fill', p => p.d.color + '22')
+    .attr('stroke', p => p.d.color)
+    .attr('stroke-width', p => p.d.id === 'u' ? 2 : 1)
+    .attr('filter', p => p.d.id === 'u' ? 'url(#glow)' : null);
+
+  nodeG.append('text')
+    .attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','Noto Serif JP')
+    .attr('font-size', p => p.d.kanji.length > 1 ? '9' : '14')
+    .attr('fill', p => p.d.color)
+    .text(p => p.d.kanji);
+
+  // index label
+  nodeG.append('text')
+    .attr('text-anchor','middle').attr('dy', '-1.4em')
+    .attr('font-family','DM Mono').attr('font-size','7').attr('fill','#555')
+    .text((p, i) => String(i + 1).padStart(2, '0'));
+
+  // 正八道 node — outside
+  const shodoX = 0, shodoY = -265;
+  svg.append('line')
+    .attr('x1', 0).attr('y1', -240).attr('x2', shodoX).attr('y2', shodoY - 20)
+    .attr('stroke', '#c9a84c').attr('stroke-width','1').attr('stroke-dasharray','3 3');
+
+  const shodoG = svg.append('g').attr('transform', `translate(${shodoX},${shodoY})`);
+  shodoG.append('circle').attr('r',22).attr('fill','rgba(201,168,76,0.1)')
+    .attr('stroke','#c9a84c').attr('stroke-width','1.5');
+  shodoG.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','Noto Serif JP').attr('font-size','9').attr('fill','#c9a84c').text('正八道');
+
+  // 涅槃 node
+  const nirvanaX = 265, nirvanaY = 0;
+  svg.append('line')
+    .attr('x1', 240).attr('y1', 0).attr('x2', nirvanaX - 24).attr('y2', nirvanaY)
+    .attr('stroke', '#8bc4a0').attr('stroke-width','1').attr('stroke-dasharray','3 3');
+
+  const nirvanaG = svg.append('g').attr('transform', `translate(${nirvanaX},${nirvanaY})`);
+  nirvanaG.append('circle').attr('r',22).attr('fill','rgba(139,196,160,0.1)')
+    .attr('stroke','#8bc4a0').attr('stroke-width','1.5');
+  nirvanaG.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','Noto Serif JP').attr('font-size','10').attr('fill','#8bc4a0').text('涅槃');
+
+})();
+
+// ─────────────────────────────────────────
+// FORCE GRAPH
+// ─────────────────────────────────────────
+(function drawForce() {
+  const wrap = document.getElementById('graph-wrap');
+  const W = wrap.clientWidth || 860;
+  const H = 520;
+  const svg = d3.select('#graph-svg').attr('viewBox', `0 0 ${W} ${H}`);
+  const tooltip = document.getElementById('tooltip');
+
+  const defs = svg.append('defs');
+  // arrow markers
+  ['default','rinne','do'].forEach(type => {
+    const col = type === 'rinne' ? '#4a9eda' : type === 'do' ? '#c9a84c' : '#b0a070';
+    defs.append('marker')
+      .attr('id', `arrow-${type}`)
+      .attr('viewBox','0 -5 10 10').attr('refX',20).attr('refY',0)
+      .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
+      .append('path').attr('d','M0,-5L10,0L0,5').attr('fill', col);
+  });
+
+  // glow
+  const gf = defs.append('filter').attr('id','fglow');
+  gf.append('feGaussianBlur').attr('stdDeviation','4').attr('result','blur');
+  const fm = gf.append('feMerge');
+  fm.append('feMergeNode').attr('in','blur');
+  fm.append('feMergeNode').attr('in','SourceGraphic');
+
+  const nodes = nidanas.map(d => ({ ...d }));
+  const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const edgeData = links.map(l => ({
+    source: nodeMap[l.source],
+    target: nodeMap[l.target],
+    type: l.type || 'default'
+  }));
+
+  // fix 無 at center
+  const muNode = nodeMap['mu'];
+  muNode.fx = W / 2;
+  muNode.fy = H / 2;
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edgeData).distance(d => {
+      if (d.type === 'rinne') return 160;
+      if (d.type === 'do') return 140;
+      return 85;
+    }).strength(0.6))
+    .force('charge', d3.forceManyBody().strength(-320))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collision', d3.forceCollide(32));
+
+  const linkG = svg.append('g');
+  const link = linkG.selectAll('line').data(edgeData).enter().append('line')
+    .attr('stroke', d => d.type === 'rinne' ? 'rgba(74,158,218,0.75)' : d.type === 'do' ? 'rgba(201,168,76,0.75)' : 'rgba(180,160,110,0.65)')
+    .attr('stroke-width', d => d.type === 'default' ? 1.5 : 2)
+    .attr('stroke-dasharray', d => d.type === 'rinne' ? '4 3' : null)
+    .attr('marker-end', d => `url(#arrow-${d.type})`);
+
+  const nodeG = svg.append('g');
+  const node = nodeG.selectAll('g').data(nodes).enter().append('g')
+    .attr('cursor','pointer')
+    .call(d3.drag()
+      .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); if (d.id !== 'mu') { d.fx = d.x; d.fy = d.y; } })
+      .on('drag',  (e, d) => { if (d.id !== 'mu') { d.fx = e.x; d.fy = e.y; } })
+      .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); if (d.id !== 'mu') { d.fx = null; d.fy = null; } })
+    );
+
+  node.append('circle')
+    .attr('r', d => d.id === 'mu' ? 32 : d.id === 'shodo' || d.id === 'nirvana' ? 24 : 20)
+    .attr('fill', d => d.color + '1a')
+    .attr('stroke', d => d.color)
+    .attr('stroke-width', d => d.id === 'mu' ? 2 : 1.2)
+    .attr('filter', d => d.id === 'mu' ? 'url(#fglow)' : null);
+
+  node.append('text')
+    .attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-family','Noto Serif JP')
+    .attr('font-size', d => d.kanji.length > 1 ? '9' : d.id === 'mu' ? '18' : '14')
+    .attr('fill', d => d.color)
+    .attr('pointer-events','none')
+    .text(d => d.kanji);
+
+  // hover + touch
+  node.on('mouseover', (event, d) => {
+    showTooltip(d);
+  }).on('mousemove', (event) => {
+    positionTooltip(event.clientX, event.clientY);
+  }).on('mouseout', () => {
+    tooltip.style.opacity = '0';
+  }).on('touchstart', (event, d) => {
+    event.preventDefault();
+    showTooltip(d);
+    const t = event.touches[0];
+    positionTooltip(t.clientX, t.clientY);
+  });
+
+  function showTooltip(d) {
+    const shitaiLabel = d.shitai ? shitaiLabels[d.shitai] : null;
+    const shitaiColor = d.shitai ? shitaiColors[d.shitai] : '#888';
+    tooltip.innerHTML = `
+      <div class="t-name">${d.kanji}</div>
+      <div class="t-role">${d.role}</div>
+      <div class="t-nidana">${d.nidana}</div>
+      ${shitaiLabel ? `<span class="t-badge" style="color:${shitaiColor};border-color:${shitaiColor}">四諦：${shitaiLabel}</span>` : ''}
+    `;
+    tooltip.style.opacity = '1';
+  }
+
+  function positionTooltip(clientX, clientY) {
+    const rect = wrap.getBoundingClientRect();
+    let x = clientX - rect.left + 12;
+    let y = clientY - rect.top - 10;
+    if (x + 230 > wrap.clientWidth) x = x - 250;
+    if (y < 0) y = 10;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    if (!e.target.closest('#graph-wrap')) tooltip.style.opacity = '0';
+  });
+
+  sim.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+})();
+</script>
+</body>
+</html>
