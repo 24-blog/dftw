@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>十二縁起 — 初天法輪</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -34,7 +34,8 @@
   /* ── HEADER ── */
   header {
     text-align: center;
-    padding: 2rem 1.5rem 2rem;
+    padding: 3rem 1.5rem 2rem;
+    padding-top: max(3rem, env(safe-area-inset-top, 0px) + 2rem);
     position: relative;
   }
   header::after {
@@ -149,12 +150,14 @@
     display: flex;
     justify-content: center;
     margin: 1rem 0 2rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
+    width: 100%;
   }
   #spiral-svg {
     overflow: visible;
-    max-width: 100%;
+    width: 100%;
+    max-width: 560px;
+    height: auto;
     touch-action: pan-x pan-y;
   }
 
@@ -177,24 +180,28 @@
     width: 100%;
     max-width: 860px;
     margin: 0 auto;
+    overflow: visible;
   }
   #graph-svg {
     width: 100%;
     height: clamp(360px, 60vw, 520px);
     display: block;
     touch-action: none;
+    overflow: visible;
   }
   #tooltip {
-    position: absolute;
+    position: fixed;
     pointer-events: none;
     background: rgba(10,10,12,0.95);
     border: 1px solid var(--gold-dim);
     padding: 0.8rem 1rem;
     font-size: 0.75rem;
     line-height: 1.8;
-    max-width: 220px;
+    max-width: min(220px, 80vw);
+    width: max-content;
     opacity: 0;
     transition: opacity 0.2s;
+    z-index: 100;
   }
   #tooltip .t-name { color: var(--gold); font-size: 0.95rem; margin-bottom: 0.3rem; }
   #tooltip .t-role { color: var(--text-dim); }
@@ -301,7 +308,7 @@
 <div class="section">
   <div class="section-label">十二縁起　生起の螺旋</div>
   <div id="spiral-wrap">
-    <svg id="spiral-svg" width="560" height="560" viewBox="-280 -280 560 560"></svg>
+    <svg id="spiral-svg" viewBox="-290 -290 580 580" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
 </div>
 
@@ -526,8 +533,8 @@ const shitaiLabels = { ku:'苦', shu:'集', metsu:'滅', do:'道' };
 // ─────────────────────────────────────────
 (function drawForce() {
   const wrap = document.getElementById('graph-wrap');
-  const W = wrap.clientWidth || 860;
-  const H = 520;
+  const W = Math.max(wrap.clientWidth || 320, 320);
+  const H = Math.max(parseInt(getComputedStyle(document.getElementById('graph-svg')).height) || 400, 360);
   const svg = d3.select('#graph-svg').attr('viewBox', `0 0 ${W} ${H}`);
   const tooltip = document.getElementById('tooltip');
 
@@ -562,15 +569,27 @@ const shitaiLabels = { ku:'苦', shu:'集', metsu:'滅', do:'道' };
   muNode.fx = W / 2;
   muNode.fy = H / 2;
 
+  const padding = 36; // keep nodes inside bounds
+
   const sim = d3.forceSimulation(nodes)
     .force('link', d3.forceLink(edgeData).distance(d => {
-      if (d.type === 'rinne') return 160;
-      if (d.type === 'do') return 140;
-      return 85;
+      // Scale distances proportionally to viewport width
+      const scale = Math.min(W, H) / 520;
+      if (d.type === 'rinne') return 160 * scale;
+      if (d.type === 'do') return 140 * scale;
+      return 85 * scale;
     }).strength(0.6))
-    .force('charge', d3.forceManyBody().strength(-320))
+    .force('charge', d3.forceManyBody().strength(-220))
     .force('center', d3.forceCenter(W / 2, H / 2))
-    .force('collision', d3.forceCollide(32));
+    .force('collision', d3.forceCollide(28))
+    .force('bound', () => {
+      // Keep all nodes within bounds
+      nodes.forEach(d => {
+        if (d.fx !== undefined && d.fx !== null) return;
+        d.x = Math.max(padding, Math.min(W - padding, d.x));
+        d.y = Math.max(padding, Math.min(H - padding, d.y));
+      });
+    });
 
   const linkG = svg.append('g');
   const link = linkG.selectAll('line').data(edgeData).enter().append('line')
@@ -630,11 +649,18 @@ const shitaiLabels = { ku:'苦', shu:'集', metsu:'滅', do:'道' };
   }
 
   function positionTooltip(clientX, clientY) {
-    const rect = wrap.getBoundingClientRect();
-    let x = clientX - rect.left + 12;
-    let y = clientY - rect.top - 10;
-    if (x + 230 > wrap.clientWidth) x = x - 250;
-    if (y < 0) y = 10;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    const tooltipW = Math.min(220, viewportW * 0.8);
+    let x = clientX + 12;
+    let y = clientY - 10;
+    // Clamp within viewport
+    if (x + tooltipW + 8 > viewportW) {
+      x = clientX - tooltipW - 12;
+    }
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    if (y + 120 > viewportH) y = viewportH - 130;
     tooltip.style.left = x + 'px';
     tooltip.style.top  = y + 'px';
   }
