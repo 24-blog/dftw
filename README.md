@@ -1,3 +1,9 @@
-# Copyright 24-blog All Rights Reserved
-This repository is public for viewing purposes only.
-No permission is granted to reuse, modify, or redistribute the contents.
+Preview<br>
+https://24-blog.github.io/dftw/
+
+
+⚠️COPYRIGHT<br>
+The source code of this repository is licensed under MIT.
+
+Textual commentary written by the repository owner is
+licensed under CC BY-NC-ND 4.0.
